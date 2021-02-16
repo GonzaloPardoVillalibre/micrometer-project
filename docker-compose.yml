@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+  #######################################
+  # Micrometer
+  #######################################
+  micrometer:
+    restart: always
+    image: maven:3.6.3-jdk-8
+    working_dir: /metrics-demo
+    volumes:
+      - ./metrics-demo:/metrics-demo
+      - ~/.m2:/root/.m2
+    ports:
+      - 8082:8082
+    command: mvn compile -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true spring-boot:run
+    networks:
+      - metrics-net
+
+  #######################################
+  # Prometheus
+  #######################################
+  prometheus:
+      image: prom/prometheus
+      volumes:
+        - ./prometheus/:/etc/prometheus/
+      command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+      ports:
+        - 9090:9090
+      links:
+        - micrometer:micrometer
+  #      - pushgateway:pushgateway
+      depends_on:
+        - micrometer
+      networks:
+        - metrics-net
+      restart: always
+
+networks:
+  metrics-net:
+    driver: bridge
